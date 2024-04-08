@@ -7,11 +7,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
+import pytorch_warmup as warmup
 
 import data
 import model
 
-from utils import batchify, get_batch, repackage_hidden, zero_hidden
+from utils import batchify, get_batch, repackage_hidden, zero_hidden, cal_acc, cal_tag_acc
 
 parser = argparse.ArgumentParser(description='PyTorch PennTreeBank RNN/LSTM Language Model')
 parser.add_argument('--data', type=str, default='data/penn/',
@@ -32,9 +33,9 @@ parser.add_argument('--epochs', type=int, default=8000,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=80, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=70,
+parser.add_argument('--bptt', type=int, default=1024,
                     help='sequence length')
-parser.add_argument('--warmup', type=int, default=4000,
+parser.add_argument('--warmup', type=int, default=1000,
                     help='warmup for learning rate')
 parser.add_argument('--cooldown', type=int, default=None,
                     help='cooldown for learning rate')
@@ -73,11 +74,15 @@ parser.add_argument('--optimizer', type=str,  default='sgd',
                     help='optimizer to use (sgd, adam)')
 parser.add_argument('--when', nargs="+", type=int, default=[-1],
                     help='When (which epochs) to divide the learning rate by 10 - accepts multiple')
+parser.add_argument('--ce_weight', action='store_true',
+                    help='use Cross Entropy Weight')
 args = parser.parse_args()
 args.tied = True
 
 if __name__ == '__main__': 
     # Set the random seed manually for reproducibility.
+    if args.cuda:
+        print("."*10, "using cuda", "."*10)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
@@ -113,7 +118,7 @@ if __name__ == '__main__':
 
     import os
     import hashlib
-    from data.PII.pii import PII, PII_MODES
+    from pii import PII, PII_MODES
     # fn = 'corpus.{}.data'.format(hashlib.md5(args.data.encode()).hexdigest())
     # if os.path.exists(fn):
     #     print('Loading cached dataset...')
@@ -129,7 +134,8 @@ if __name__ == '__main__':
     # train_data = batchify(corpus.train, args.batch_size, args)
     # val_data = batchify(corpus.valid, eval_batch_size, args)
     # test_data = batchify(corpus.test, test_batch_size, args)
-    pii = PII(os.path.join('..', 'dataset'))
+    
+    pii = PII(os.path.join('..', 'dataset'), use_cuda=args.cuda)
     
 
     ###############################################################################
@@ -139,7 +145,7 @@ if __name__ == '__main__':
     from splitcross import SplitCrossEntropyLoss
     criterion = None
 
-    ntokens = len(pii.dictionary)
+    ntokens = pii.tokenizer.vocab_size
     print('Total number of tokens:', ntokens)
     #model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, args.tied)
     #model = model.BoomRNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, args.tied)
@@ -171,11 +177,14 @@ if __name__ == '__main__':
             # WikiText-103
             splits = [2800, 20000, 76000]
         print('Using', splits)
-        criterion = SplitCrossEntropyLoss(args.emsize, splits=splits, verbose=False)
+        # criterion = SplitCrossEntropyLoss(args.emsize, splits=splits, verbose=False)
+        # TODO try to change to cross-entropy
+        criterion = nn.CrossEntropyLoss(weight=pii.class_weight if args.ce_weight else None, reduction='mean')
     ###
     if args.cuda:
         model = model.cuda()
         criterion = criterion.cuda()
+        
     if False: # or args.jit:
         print('Jitting ...')
         model.eval()
@@ -197,7 +206,9 @@ if __name__ == '__main__':
         model.eval()
         if args.model == 'QRNN' and getattr(model, 'reset', None): model.reset()
         total_loss = 0
-        ntokens = len(pii.dictionary)
+        total_acc = 0
+        total_tag_acc = 0
+        # ntokens = len(pii.dictionary)
         hidden = None
         mems = None
         with torch.no_grad():
@@ -205,11 +216,24 @@ if __name__ == '__main__':
                 # data, targets = get_batch(data_source, i, args, evaluation=True)
                 data, targets = pii[i]
                 #output, hidden = model(data, hidden)
-                output, hidden, mems = model(data, hidden, mems=mems, return_h=False)
-                total_loss += len(data) * criterion(model.decoder.weight, model.decoder.bias, output, targets.view(-1)).data
+                output, hidden, mems, logits = model(data, hidden, mems=mems, return_h=False)
+                # TODO changed
+                # total_loss += len(data) * criterion(model.decoder.weight, model.decoder.bias, output, targets.view(-1)).data
+                total_loss += criterion(logits.float(), targets)
+                total_acc += cal_acc(logits, targets)
+                total_tag_acc += cal_tag_acc(logits, targets)
                 if hidden is not None:
                     hidden = repackage_hidden(hidden)
-        return total_loss.item() / len(data_source)
+        return total_loss.item() / len(pii), total_acc/len(pii), total_tag_acc/len(pii)
+
+
+    ## I added
+    steps_per_epoch = len(pii) // args.accumulate
+    warmup_period = args.warmup
+    num_steps = steps_per_epoch * args.epochs - warmup_period
+    t0 = num_steps // 3
+    lr_min = 0
+    max_step = t0 * 3 + warmup_period
 
 
     def train(epoch=0):
@@ -217,8 +241,10 @@ if __name__ == '__main__':
         pii.mode = PII_MODES[0] # added
         if args.model == 'QRNN' and getattr(model, 'reset', None): model.reset()
         total_loss = 0
+        total_acc = 0
+        total_tag_acc = 0
         start_time = time.time()
-        ntokens = len(pii.dictionary)
+        # ntokens = len(pii.dictionary)
         hidden = None
         mems = None
         batch, i = 0, 0
@@ -229,14 +255,18 @@ if __name__ == '__main__':
         for i in range(len(pii)):
             # TODO the bptt is incorrect, we are using dynamic input size
             # Warmup
-            for param_group in optimizer.param_groups:
-                step = epoch * (len(pii) // args.bptt) + batch + 1
-                pctwarm = min(step, args.warmup) / args.warmup
-                if args.cooldown:
-                    pctcool = max(min(step - args.cooldown, args.cooldown) / args.cooldown, 0)
-                else:
-                    pctcool = 0
-                param_group['lr'] = args.lr * (pctwarm - pctcool)
+            
+            
+            # for param_group in optimizer.param_groups:
+            #     step = epoch * len(pii) + batch + 1 #(len(pii) // args.bptt) + batch + 1 # changed
+            #     pctwarm = min(step, args.warmup) / args.warmup
+            #     if args.cooldown:
+            #         pctcool = max(min(step - args.cooldown, args.cooldown) / args.cooldown, 0)
+            #     else:
+            #         pctcool = 0
+            #     param_group['lr'] = args.lr * (pctwarm - pctcool)
+                
+                
                 #param_group['betas'] = (0.95 - (pctwarm - pctcool) * 0.05, param_group['betas'][1])
             if True:
                 bptt = args.bptt if np.random.random() < 0.95 else args.bptt / 2.
@@ -277,9 +307,14 @@ if __name__ == '__main__':
 
             #output, hidden, rnn_hs, dropped_rnn_hs = model(data, hidden, return_h=True)
             #output, hidden, mems, attn_outs, _ = model(data, hidden, return_h=True, mems=mems)
-            output, hidden, mems, attn_outs, _ = model(data, hidden, return_h=True, mems=mems)
-            raw_loss = criterion(model.decoder.weight, model.decoder.bias, output, targets.view(-1))
-
+            output, hidden, mems, logits, attn_outs, _ = model(data, hidden, return_h=True, mems=mems)
+            raw_loss = criterion(logits.float(), targets) # criterion(model.decoder.weight, model.decoder.bias, output, targets.view(-1))
+            
+            # ACC
+            acc = cal_acc(logits, targets)
+            total_tag_acc += cal_tag_acc(logits, targets)    
+            # print("train_acc:", cal_acc(logits, targets), "raw loss:", raw_loss)
+            
             losses.append(raw_loss)
 
             if False and mems:
@@ -310,13 +345,21 @@ if __name__ == '__main__':
             if batch % loss_every_n_batches == 0:
                 loss = functools.reduce(lambda x, y: x + y, losses)
                 #print(losses)
-                #loss.backward()
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
+                # loss.backward()
+                # with amp.scale_loss(loss, optimizer) as scaled_loss:
+                #     scaled_loss.backward()
+                loss.backward()
 
                 # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
                 if args.clip: torch.nn.utils.clip_grad_norm_(params, args.clip)
                 optimizer.step()
+                #TODO I added these
+                with warmup_scheduler.dampening():
+                    if warmup_scheduler.last_step + 1 >= warmup_period:
+                        lr_scheduler.step()
+                if warmup_scheduler.last_step + 1 >= max_step:
+                    break
+                
                 if hidden is not None:
                     #if np.random.random() > 0.975:
                     #    hidden = None
@@ -339,25 +382,32 @@ if __name__ == '__main__':
                     b.rnn.weight_hh_l0.data[~m] = w[~m]
                     b.rnn.flatten_parameters()
 
-            total_loss += raw_loss.data
+            total_loss += raw_loss #raw_loss.data #TODO changed
+            total_acc += acc
             #optimizer.param_groups[0]['lr'] = lr2
             if batch % args.log_interval == 0 and batch > 0:
                 cur_loss = total_loss.item() / args.log_interval
+                cur_acc = total_acc / args.log_interval
+                cur_tag_acc = total_tag_acc / args.log_interval
                 elapsed = time.time() - start_time
                 print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:05.5f} | ms/batch {:5.2f} | '
-                        'loss {:5.2f} | ppl {:8.2f} | bpc {:8.3f}'.format(
-                    epoch, batch, len(pii) // args.bptt, optimizer.param_groups[0]['lr'],
-                    elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss), cur_loss / math.log(2)))
+                        'loss {:5.2f} | ppl {:8.2f} | bpc {:8.3f} | acc {:05.5f} | tag_acc {:05.5f}'.format(
+                    epoch, batch, len(pii), optimizer.param_groups[0]['lr'],
+                    elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss), cur_loss / math.log(2), cur_acc, cur_tag_acc))
                 total_loss = 0
+                total_acc = 0
+                total_tag_acc = 0
                 start_time = time.time()
             ###
             batch += 1
-            i += seq_len
+            # i += seq_len
 
     # Loop over epochs.
     lr = args.lr
     best_val_loss = []
     stored_loss = 100000000
+    
+
 
     # At any point you can hit Ctrl + C to break out of training early.
     try:
@@ -377,14 +427,22 @@ if __name__ == '__main__':
             #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.1)
             #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0, random_min_trust=0.2, random_trust_dice=10)
             #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.2, random_min_trust=0.5, random_trust_dice=4)
+        
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=t0, T_mult=1, eta_min=lr_min)
+
+        warmup_scheduler = warmup.LinearWarmup(optimizer, warmup_period)
+                
         from lookahead import Lookahead
         if False:
             k, alpha = 5, 0.8
             print('Lookahead - k {} and alpha {}'.format(k, alpha))
             optimizer = Lookahead(base_optimizer=optimizer, k=k, alpha=alpha)
 
-        from apex import amp
-        model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
+        # no amp
+        # from torch.cuda import amp # changed from apex to torch.cuda
+        # model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
+        
         #model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
 
         for epoch in range(1, args.epochs+1):
@@ -396,11 +454,11 @@ if __name__ == '__main__':
                     tmp[prm] = prm.data.clone()
                     prm.data = optimizer.state[prm]['ax'].clone()
 
-                val_loss2 = evaluate(val_data)
+                val_loss2, val_acc2, val_tag_acc2 = evaluate()
                 print('-' * 89)
                 print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                    'valid ppl {:8.2f} | valid bpc {:8.3f}'.format(
-                        epoch, (time.time() - epoch_start_time), val_loss2, math.exp(val_loss2), val_loss2 / math.log(2)))
+                    'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
+                        epoch, (time.time() - epoch_start_time), val_loss2, math.exp(val_loss2), val_loss2 / math.log(2), val_acc2, val_tag_acc2))
                 print('-' * 89)
 
                 if val_loss2 < stored_loss:
@@ -412,11 +470,11 @@ if __name__ == '__main__':
                     prm.data = tmp[prm].clone()
 
             else:
-                val_loss = evaluate()
+                val_loss, val_acc, val_tag_acc = evaluate()
                 print('-' * 89)
                 print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                    'valid ppl {:8.2f} | valid bpc {:8.3f}'.format(
-                epoch, (time.time() - epoch_start_time), val_loss, math.exp(val_loss), val_loss / math.log(2)))
+                    'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
+                epoch, (time.time() - epoch_start_time), val_loss, math.exp(val_loss), val_loss / math.log(2), val_acc, val_tag_acc))
                 print('-' * 89)
 
                 if val_loss < stored_loss:

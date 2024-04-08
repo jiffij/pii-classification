@@ -40,3 +40,44 @@ def get_batch(source, i, args, seq_len=None, evaluation=False):
     data = source[i:i+seq_len]
     target = source[i+1:i+1+seq_len]
     return data, target
+
+def cal_acc(labels, targets):
+    # print("label size:", labels.size(), "target size:", targets.size())
+    # Calculate the argmax along the appropriate dimension
+    output_labels = torch.argmax(labels, dim=1)
+    # target_labels = torch.argmax(targets, dim=1)
+    target_labels = targets
+
+    # Calculate the number of correct predictions
+    correct = (output_labels == target_labels).sum().item()
+
+    # Calculate the total number of predictions
+    total = labels.size(0)
+
+    # Calculate the accuracy
+    accuracy = correct / total
+    
+    return accuracy
+
+def cal_tag_acc(labels, targets):
+    # Calculate the argmax along the appropriate dimension
+    output_labels = torch.argmax(labels, dim=1)
+    # target_labels = torch.argmax(targets, dim=1)
+    target_labels = targets
+
+    # Ignore samples where target label is the last index
+    valid_indices = target_labels != (labels.size(1) - 1)
+    output_labels = output_labels[valid_indices]
+    target_labels = target_labels[valid_indices]
+
+    # Calculate the number of correct predictions
+    correct = (output_labels == target_labels).sum().item()
+
+    # Calculate the total number of predictions
+    total = len(valid_indices.nonzero())
+
+    # Calculate the accuracy
+    accuracy = correct / total if total > 0 else 1.0
+    
+    return accuracy
+

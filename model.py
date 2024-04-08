@@ -8,7 +8,8 @@ import torch.nn as nn
 
 import torch.nn.functional as F
 
-from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
+# from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
+from torch.nn import LayerNorm
 
 import torch.utils
 import torch.utils.checkpoint
@@ -19,19 +20,28 @@ checkpoint = lambda f, *args, **kwargs: f(*args, **kwargs)
 def attention(query, key, value, attn_mask=None, need_weights=True, dropout=None):
     # https://pytorchnlp.readthedocs.io/en/latest/_modules/torchnlp/nn/attention.html
     # Needs [batch, heads, seqlen, hid]
-
+    
+    # TODO Wrong dim size for attn mask
     batch_size, heads, query_len, dim = query.size()
     key_len = key.size(2)
+    # key_len is 1
+    # print(query.size())
+    # print(key.size())
+    # print(value.size())
+    # torch.Size([1024, 1, 1, 1024])
 
     # Scaling by dim due to http://nlp.seas.harvard.edu/2018/04/03/attention.html
     attention_scores = torch.matmul(query, key.transpose(-1, -2).contiguous()) / math.sqrt(dim)
-    if attn_mask is not None:
+    # print("attn_scr", attention_scores.size())
+    if False: # attn_mask is not None:
         attn_mask = attn_mask.view(1, 1, *attn_mask.shape[-2:])
         attention_scores = attention_scores + attn_mask # Mask is additive and contains -Infs
 
     attention_weights = F.softmax(attention_scores, dim=-1)
+    # print(attention_weights.size())
     if dropout:
         attention_weights = dropout(attention_weights)
+    # RuntimeError: shape '[1024, 1, 1, 1]' is invalid for input of size 1073741824
     attention_weights = attention_weights.view(batch_size, heads, query_len, key_len)
 
     mix = torch.matmul(attention_weights, value)
@@ -126,6 +136,9 @@ class Attention(nn.Module):
         key_len = k.size(1)
         ###
         dim = self.nhid // self.heads
+        # print(batch_size, query_len, self.heads, dim)
+        # print(k.size(), v.size())
+        
         q = q.view(batch_size, query_len, self.heads, dim).transpose(1, 2)
         k, v = [vec.view(batch_size, key_len, self.heads, dim).transpose(1, 2) for vec in [k, v]]
 
@@ -160,8 +173,9 @@ class Block(nn.Module):
         super().__init__()
         #self.attn = PyTorchAttention(embed_dim, heads=heads, dropout=dropout)
         self.attn = None
-        if use_attn:
-            self.attn = Attention(embed_dim, heads=heads, r=False, dropout=dropout)
+        if use_attn: # TODO changed to pytorch attention
+            self.attn = PyTorchAttention(embed_dim, heads=heads, dropout=dropout)
+            # self.attn = Attention(embed_dim, heads=heads, r=False, dropout=dropout)
         self.ff = Boom(embed_dim, hidden_dim, dropout=dropout, shortcut=True)
         self.lnstart = LayerNorm(embed_dim, eps=1e-12)
         self.lnmid = LayerNorm(embed_dim, eps=1e-12)
@@ -175,7 +189,7 @@ class Block(nn.Module):
 
         self.rnn = None
         if rnn:
-            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=embed_dim, batch_first=False)
+            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=embed_dim, batch_first=False, bidirectional=True) #TODO test with bidirectional
             if rnn not in [True, False]:
                 self.rnn = rnn
 
@@ -236,9 +250,9 @@ class SHARNN(nn.Module):
         self.nlayers = nlayers
         num_embeddings = ntoken
         self.num_max_positions = 5000 # 2500 # 5000 # 4096 # 2048 # 4096 + 1024 # 2048 # 5000 # 4096 # 1024 # 4096 # 512 # 1024 # 4096 # 4608 # 7168 # 8192 # 6144 # 4608 # 5000 # 4096 # 3072 # 8192 # 4096
-        self.num_heads = 1 # 4
+        self.num_heads = 4 #TODO change to 4  
         num_layers = nlayers
-        self.causal = True
+        self.causal = False # Use global attn instead, not language modeling
         self.drop = nn.Dropout(dropout)
         self.idrop = nn.Dropout(dropouti)
         self.hdrop = nn.Dropout(dropouth)
@@ -260,6 +274,7 @@ class SHARNN(nn.Module):
 
         self.encoder = nn.Embedding(num_embeddings, embed_dim)
         self.decoder = nn.Linear(embed_dim, num_embeddings)
+        self.linear = nn.Linear(embed_dim, 13) # Added 
         if tie_weights:
             #if nhid != ninp:
             #    raise ValueError('When using the tied flag, nhid must be equal to emsize')
@@ -277,6 +292,7 @@ class SHARNN(nn.Module):
     def forward(self, x, hidden=None, mems=None, padding_mask=None, return_h=True):
         """ Input has shape [seq length, batch] """
         e = self.encoder(x)
+        # print(e.size())
         e = self.idrop(e)
 
         if mems is not None:
@@ -318,10 +334,12 @@ class SHARNN(nn.Module):
             new_mems.append(m)
 
         h = self.drop(h)
+        
+        l = self.linear(h).squeeze(-1)
 
         if return_h:
-            return h, new_hidden, new_mems, None, None
-        return h, new_hidden, new_mems
+            return h, new_hidden, new_mems, l, None, None
+        return h, new_hidden, new_mems, l
 
 class GELU(nn.Module):
     """

@@ -33,6 +33,11 @@ To get started:
 - Install Nvidia's [AMP](https://github.com/NVIDIA/apex)
 - Install the minimum trust variant of LAMB from [Smerity's PyTorch-LAMB](https://github.com/Smerity/pytorch-lamb)
 
+Run the following code to install pytorch-lamb:
+
+`cd pytorch-lamb &
+pip install -e .`
+
 ### Training the model
 
 By default the model trains the minimal single headed attention model from the paper, inserting a lone attention mechanism in the second last layer of a four layer LSTM.
@@ -55,3 +60,16 @@ When the training slows down a second pass with a halved learning rate until val
 Most of the improvement will happen in the first few epochs of this final command.
 
 The final test bpc should be approximately 1.07 for the full 4 layer SHA-LSTM or 1.08 for the single headed 4 layer SHA-LSTM.
+
+
+## Added 
+- CosineAnnealingWarmRestarts
+- LinearWarmup
+- Bi-directional LSTM
+- Removed attn. mask
+- Changed to Pytorch multi-headed attn
+- Optimizer -> adam, adamw
+- changed SplitCEloss to CEloss (with weight, or log weight) --ce_weight
+- removed amp
+- added pii dataset
+- changed to multi-headed attn.

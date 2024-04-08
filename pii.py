@@ -9,17 +9,32 @@ import numpy as np
 import os
 import torch
 import random
+from sklearn.utils.class_weight import compute_class_weight
 
 TRAINING_MODEL_PATH = "microsoft/deberta-v3-base"
 TRAINING_MAX_LENGTH = 1024
 OUTPUT_DIR = "output"
 PII_MODES = ["TRAIN", "VALID", "TEST"]
-
+random.seed(10)
 
 class PII(object):
-    def __init__(self, path, num_valid_samples = 200):
+    def __init__(self, path, num_valid_samples = 500, use_cuda=False, cal_class_weight=False):
         self.mode = PII_MODES[0]
-        self.tokenizer, self.train, self.dictionary = self.tokenize(path)
+        self.use_cuda = use_cuda
+        self.tokenizer, self.train, self.id2label = self.tokenize(path)
+        self.num_classes = len(self.id2label)
+        if cal_class_weight:
+            self.class_weight = self.get_class_weight(self.train)
+        else:
+            self.class_weight = torch.tensor([ 8.56314318,  9.19172856,  9.5906706 , 10.30031814, 10.98184035,
+            7.23594694,  9.85339371, 11.1952026 ,  9.53953753,  9.14359358,
+            8.48692677, 20.09521001,  1.        ])
+            # self.class_weight = torch.tensor([1.5158e+01, 2.3435e+01, 3.0900e+01, 5.0534e+01, 8.1048e+01, 6.0411e+00,
+            # 3.7072e+01, 9.3966e+01, 2.9824e+01, 2.2666e+01, 1.4378e+01, 4.4889e+04,
+            # 8.0151e-02], dtype=torch.float)
+            
+        # self.dictionary_size = len(self.train.features.keys())
+        # print(self.tokenizer.vocab_size)
         self.valid_idx = random.sample(range(len(self.train)), num_valid_samples)
         # self.valid = self.train[self.valid_idx]
         
@@ -41,7 +56,10 @@ class PII(object):
             pass
         else:
             return None
-        return torch.LongTensor(x["input_ids"]), torch.LongTensor(x['labels'])
+        if self.use_cuda:
+            return torch.LongTensor(x["input_ids"]).cuda(), torch.LongTensor(x['labels']).cuda()
+        else:
+            return torch.LongTensor(x["input_ids"]), torch.LongTensor(x['labels']) #torch.nn.functional.one_hot(torch.tensor(x['labels']), num_classes=self.num_classes)
     
     def __len__(self):
         if self.mode == PII_MODES[0]:
@@ -50,6 +68,14 @@ class PII(object):
             return len(self.valid)
         else: 
             return -1
+        
+    def get_class_weight(self, df):
+        y = []
+        for i in range(len(df)):
+            y = y + df[i]['labels']
+        class_weights=compute_class_weight('balanced', classes=np.unique(y), y=np.array(y))
+        return torch.tensor(class_weights,dtype=torch.float32)
+ 
     
     def tokenize(self, path):
         data = json.load(open(os.path.join(path, "pii-detection-removal-from-educational-data", "train.json")))
@@ -137,18 +163,17 @@ class PII(object):
             "provided_labels": [x["labels"] for x in data],
         })
         ds = ds.map(tokenize, fn_kwargs={"tokenizer": tokenizer, "label2id": label2id, "max_length": TRAINING_MAX_LENGTH}, num_proc=3)
+        # x = ds[0]
 
-        x = ds[0]
+        # for t,l in zip(x["tokens"], x["provided_labels"]):
+        #     if l != "O":
+        #         print((t,l))
 
-        for t,l in zip(x["tokens"], x["provided_labels"]):
-            if l != "O":
-                print((t,l))
+        # print("*"*100)
 
-        print("*"*100)
-
-        for t, l in zip(tokenizer.convert_ids_to_tokens(x["input_ids"]), x["labels"]):
-            if id2label[l] != "O":
-                print((t,id2label[l]))
+        # for t, l in zip(tokenizer.convert_ids_to_tokens(x["input_ids"]), x["labels"]):
+        #     if id2label[l] != "O":
+        #         print((t,id2label[l]))
                 
         # print("*"*100)
         
@@ -159,8 +184,9 @@ class PII(object):
 
 # if __name__ == "__main__":
 #     pii = PII(os.path.join('..', 'dataset'))
-#     print(len(pii))
-#     print(pii[1])
-#     pii.mode = PII_MODES[1]
-#     print(len(pii))
-#     print(pii[1])
+#     print(pii.class_weight)
+    # print(len(pii))
+    # print(pii[1])
+    # pii.mode = PII_MODES[1]
+    # print(len(pii))
+    # print(pii[1])

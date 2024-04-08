@@ -1,0 +1,8 @@
+python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save pii_cuda.pt --log-interval 10 --seed 5512 --optimizer lamb --bptt 1024 --warmup 800 --lr 2e-3 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --cuda
+
+python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save pii_cuda.pt --log-interval 10 --seed 5512 --optimizer adam --bptt 1024 --warmup 800 --lr 5e-3 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16
+
+python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save pii_cuda_nomsk.pt --log-interval 10 --seed 5512 --optimizer adamw --bptt 1024 --warmup 2000 --lr 5e-3 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight
+
+trained 21 epoch with no attn mask, with normal weight and single head, bi-directional:
+python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save pii_cuda_nomsk.pt --log-interval 10 --seed 5512 --optimizer adamw --bptt 1024 --warmup 2000 --lr 5e-3 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 2
