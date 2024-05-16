@@ -77,7 +77,7 @@ def cal_tag_acc(labels, targets):
     total = len(valid_indices.nonzero())
 
     # Calculate the accuracy
-    accuracy = correct / total if total > 0 else 1.0
+    accuracy = correct / total if total > 0 else -1
     
     return accuracy
 

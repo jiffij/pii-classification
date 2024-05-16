@@ -1,0 +1,61 @@
+BERT.pt:
+time per epoch: 719.7275
+FLOPs: 20.743G, Params: 20.350M
+Model total parameters: 37327885
+=========================================================================================
+| Test result | test loss  0.03 | test acc     1.00 | test tag acc    0.967 | test precision  0.85 | test recall  0.99 | test f5  0.99 |
+=========================================================================================
+=========================================================================================
+| Test result | test loss  0.28 | test acc     0.99 | test tag acc    0.917 | test precision  0.84 | test recall  0.99 | test f5  0.98 |
+=========================================================================================
+
+
+2_cont_pretrained_cos.pt:
+FLOPs: 35.271T, Params: 51.485M
+Model total parameters: 68287501
+=========================================================================================
+| Test result | test loss  1.66 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================
+
+cont_pretrained_cos.pt:
+
+Model total parameters: 68287501
+=========================================================================================
+| Test result | test loss  1.90 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================
+
+
+ep3_sha_cuda_1head_logweight_Odiv10_10k_fastem_hisattn.pt:
+FLOPs: 35.271T, Params: 51.485M
+Model total parameters: 68287501
+=========================================================================================
+| Test result | test loss  1.99 | test acc     0.00 | test tag acc    0.438 | test precision  0.00 | test recall  1.00 | test f5  0.06 |
+=========================================================================================
+
+sha_cuda_1head_logweight_10k_fastem.pt:
+
+Model total parameters: 68287501
+=========================================================================================
+| Test result | test loss  1.43 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================
+
+sha_cuda_4head_logweight_10k.pt
+FLOPs: 51.704G, Params: 50.435M
+Model total parameters: 198436877
+=========================================================================================
+| Test result | test loss  0.86 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================
+
+pii_cuda_nomsk.pt:
+FLOPs: 51.704G, Params: 50.435M
+Model total parameters: 198436877
+=========================================================================================
+| Test result | test loss  1.08 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================
+
+pii_cuda.pt:
+
+Model total parameters: 198436877
+=========================================================================================
+| Test result | test loss  1.20 | test acc     1.00 | test tag acc    0.000 | test precision  1.00 | test recall  0.69 | test f5  0.70 |
+=========================================================================================

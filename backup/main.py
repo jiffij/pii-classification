@@ -9,7 +9,6 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 import pytorch_warmup as warmup
 from transformers import MobileBertForTokenClassification, MobileBertConfig
-from sklearn.metrics import recall_score, precision_score
 
 import data
 import model
@@ -82,10 +81,6 @@ parser.add_argument('--language_model', action='store_true',
                     help='pretrain with language modeling')
 parser.add_argument('--criterion', type=str, default='MSE',
                     help='MSE or CosineSimilarity')
-parser.add_argument('--testing', action='store_true',
-                    help='test mode')
-parser.add_argument('--fastem', action='store_true',
-                    help='enable fast embedding')
 args = parser.parse_args()
 args.tied = True
 
@@ -148,7 +143,7 @@ if __name__ == '__main__':
     # test_data = batchify(corpus.test, test_batch_size, args)
     
     pii = PII(os.path.join('..', 'dataset'), use_cuda=args.cuda, language_model=args.language_model,
-              use_fast=False if args.model == "BERT" else args.fastem, Test=args.testing)
+              use_fast=False if args.model == "BERT" else True)
     
 
     ###############################################################################
@@ -179,9 +174,7 @@ if __name__ == '__main__':
         print(f'Resuming model {args.resume} ...')
         model_load(args.resume)
         #optimizer.param_groups[0]['lr'] = args.lr
-        
-        # model.dropouti, model.dropouth, model.dropout, args.dropoute = args.dropouti, args.dropouth, args.dropout, args.dropoute
-        
+        model.dropouti, model.dropouth, model.dropout, args.dropoute = args.dropouti, args.dropouth, args.dropout, args.dropoute
         #if args.wdrop:
         #    from weight_drop import WeightDrop
         #    for rnn in model.rnns:
@@ -236,8 +229,6 @@ if __name__ == '__main__':
         total_loss = 0
         total_acc = 0
         total_tag_acc = 0
-        total_precision = 0
-        total_recall = 0
         # ntokens = len(pii.dictionary)
         hidden = None
         mems = None
@@ -261,41 +252,14 @@ if __name__ == '__main__':
                     else:
                         total_loss += criterion(output, targets)
                 else:
-                    
                     total_loss += criterion(logits.float(), targets)
                     total_acc += cal_acc(logits, targets)
                     ta = cal_tag_acc(logits, targets)
-                    
-                    targets = targets.cpu().detach().numpy().tolist()
-                    logits = logits.cpu().detach().numpy()
-                    logits = np.argmax(logits, axis=-1).tolist()
-                    
-                    # precision = 0
-                    # recall = 0
-                    # for j in range(13):
-                    #     if sum(targets==j) = 0: continue
-                    targets = [ 1 if j != 12 else 0 for j in targets]
-                    logits = [ 1 if j != 12 else 0 for j in logits]
-                    precision = precision_score(targets, logits, zero_division=1)
-                    recall = recall_score(targets, logits, zero_division=1)
-                    if isinstance(precision, np.ndarray):
-                        # precision = [j for j in precision if not np.isnan(j)]
-                        precision = np.sum(precision)/len(precision)
-                    if isinstance(recall, np.ndarray):
-                        # recall = [j for j in recall if not np.isnan(j)]
-                        recall = np.sum(recall)/len(recall)
-                        
-                    total_precision += precision
-                    total_recall += recall
-                        
-                    # precision /= 13
-                    # recall /= 13
-                    
                     total_tag_acc += 0 if ta == -1 else ta
                     notag_batches += 1 if ta == -1 else 0
                 if hidden is not None:
                     hidden = repackage_hidden(hidden)
-        return total_loss.item() / len(pii), total_acc/len(pii), total_tag_acc/(len(pii)-notag_batches), total_precision/len(pii), total_recall/len(pii)
+        return total_loss.item() / len(pii), total_acc/len(pii), total_tag_acc/(len(pii)-notag_batches)
 
 
     ## I added
@@ -516,112 +480,109 @@ if __name__ == '__main__':
     best_val_loss = []
     stored_loss = 100000000
     
-    if not args.testing:
 
-        # At any point you can hit Ctrl + C to break out of training early.
-        try:
-            optimizer = None
-            # Ensure the optimizer is optimizing params, which includes both the model's weights as well as the criterion's weight (i.e. Adaptive Softmax)
-            if args.optimizer == 'sgd':
-                optimizer = torch.optim.SGD(params, lr=args.lr, weight_decay=args.wdecay)
-            if args.optimizer == 'adagrad':
-                optimizer = torch.optim.Adagrad(params, lr=args.lr, weight_decay=args.wdecay)
-            if args.optimizer == 'adam':
-                optimizer = torch.optim.Adam(params, lr=args.lr, weight_decay=args.wdecay)
-            if args.optimizer == 'adamw':
-                optimizer = torch.optim.AdamW(params, lr=args.lr, weight_decay=args.wdecay)
-            if args.optimizer == 'lamb':
-                from pytorch_lamb import Lamb
-                optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.25)
-                #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.1)
-                #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0, random_min_trust=0.2, random_trust_dice=10)
-                #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.2, random_min_trust=0.5, random_trust_dice=4)
 
-            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                optimizer, T_0=t0, T_mult=1, eta_min=lr_min)
-
-            warmup_scheduler = warmup.LinearWarmup(optimizer, warmup_period)
-
-            from lookahead import Lookahead
-            if False:
-                k, alpha = 5, 0.8
-                print('Lookahead - k {} and alpha {}'.format(k, alpha))
-                optimizer = Lookahead(base_optimizer=optimizer, k=k, alpha=alpha)
-
-            # no amp
-            # from torch.cuda import amp # changed from apex to torch.cuda
-            # model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
-
-            #model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
-
-            for epoch in range(1, args.epochs+1):
-                epoch_start_time = time.time()
-                train(epoch - 1)
-                # model_save(f"lastest_{args.save}")
-                if 't0' in optimizer.param_groups[0]:
-                    tmp = {}
-                    for prm in model.parameters():
-                        tmp[prm] = prm.data.clone()
-                        prm.data = optimizer.state[prm]['ax'].clone()
-
-                    val_loss2, val_acc2, val_tag_acc2, _, _ = evaluate()
-                    print('-' * 89)
-                    print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                        'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
-                            epoch, (time.time() - epoch_start_time), val_loss2, math.exp(val_loss2), val_loss2 / math.log(2), val_acc2, val_tag_acc2))
-                    print('-' * 89)
-
-                    if val_loss2 < stored_loss:
-                        model_save(args.save)
-                        print('Saving Averaged!')
-                        stored_loss = val_loss2
-
-                    for prm in model.parameters():
-                        prm.data = tmp[prm].clone()
-
-                else:
-                    val_loss, val_acc, val_tag_acc, _, _ = evaluate()
-                    print('-' * 89)
-                    print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                        'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
-                    epoch, (time.time() - epoch_start_time), val_loss, math.exp(val_loss), val_loss / math.log(2), val_acc, val_tag_acc))
-                    print('-' * 89)
-
-                    if val_loss < stored_loss:
-                        model_save(args.save)
-                        print('Saving model (new best validation)')
-                        stored_loss = val_loss
-
-                    if args.optimizer == 'sgd' and 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
-                        print('Switching to ASGD')
-                        optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
-
-                    if epoch in args.when:
-                        print('Saving model before learning rate decreased')
-                        model_save('{}.e{}'.format(args.save, epoch))
-                        print('Dividing learning rate by 10')
-                        optimizer.param_groups[0]['lr'] /= 10.
-
-                    best_val_loss.append(val_loss)
-
-        except KeyboardInterrupt:
-            print('-' * 89)
-            print('Exiting from training early')
-    
-    else:
-        # Load the best saved model.
+    # At any point you can hit Ctrl + C to break out of training early.
+    try:
+        optimizer = None
+        # Ensure the optimizer is optimizing params, which includes both the model's weights as well as the criterion's weight (i.e. Adaptive Softmax)
+        if args.optimizer == 'sgd':
+            optimizer = torch.optim.SGD(params, lr=args.lr, weight_decay=args.wdecay)
+        if args.optimizer == 'adagrad':
+            optimizer = torch.optim.Adagrad(params, lr=args.lr, weight_decay=args.wdecay)
+        if args.optimizer == 'adam':
+            optimizer = torch.optim.Adam(params, lr=args.lr, weight_decay=args.wdecay)
+        if args.optimizer == 'adamw':
+            optimizer = torch.optim.AdamW(params, lr=args.lr, weight_decay=args.wdecay)
+        if args.optimizer == 'lamb':
+            from pytorch_lamb import Lamb
+            optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.25)
+            #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.1)
+            #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0, random_min_trust=0.2, random_trust_dice=10)
+            #optimizer = Lamb(params, lr=args.lr, weight_decay=args.wdecay, min_trust=0.2, random_min_trust=0.5, random_trust_dice=4)
         
-        model_load(args.resume)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=t0, T_mult=1, eta_min=lr_min)
+
+        warmup_scheduler = warmup.LinearWarmup(optimizer, warmup_period)
+                
+        from lookahead import Lookahead
+        if False:
+            k, alpha = 5, 0.8
+            print('Lookahead - k {} and alpha {}'.format(k, alpha))
+            optimizer = Lookahead(base_optimizer=optimizer, k=k, alpha=alpha)
+
+        # no amp
+        # from torch.cuda import amp # changed from apex to torch.cuda
+        # model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
         
-        params = list(model.parameters()) + list(criterion.parameters())
-        total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in params if x.size())
-        print('Model total parameters:', total_params)
+        #model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
+
+        for epoch in range(1, args.epochs+1):
+            epoch_start_time = time.time()
+            train(epoch - 1)
+            # model_save(f"lastest_{args.save}")
+            if 't0' in optimizer.param_groups[0]:
+                tmp = {}
+                for prm in model.parameters():
+                    tmp[prm] = prm.data.clone()
+                    prm.data = optimizer.state[prm]['ax'].clone()
+
+                val_loss2, val_acc2, val_tag_acc2 = evaluate()
+                print('-' * 89)
+                print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
+                    'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
+                        epoch, (time.time() - epoch_start_time), val_loss2, math.exp(val_loss2), val_loss2 / math.log(2), val_acc2, val_tag_acc2))
+                print('-' * 89)
+
+                if val_loss2 < stored_loss:
+                    model_save(args.save)
+                    print('Saving Averaged!')
+                    stored_loss = val_loss2
+
+                for prm in model.parameters():
+                    prm.data = tmp[prm].clone()
+
+            else:
+                val_loss, val_acc, val_tag_acc = evaluate()
+                print('-' * 89)
+                print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
+                    'valid ppl {:8.2f} | valid bpc {:8.3f} | valid acc {:05.5f} | valid tag acc {:05.5f}'.format(
+                epoch, (time.time() - epoch_start_time), val_loss, math.exp(val_loss), val_loss / math.log(2), val_acc, val_tag_acc))
+                print('-' * 89)
+
+                if val_loss < stored_loss:
+                    model_save(args.save)
+                    print('Saving model (new best validation)')
+                    stored_loss = val_loss
+
+                if args.optimizer == 'sgd' and 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
+                    print('Switching to ASGD')
+                    optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
+
+                if epoch in args.when:
+                    print('Saving model before learning rate decreased')
+                    model_save('{}.e{}'.format(args.save, epoch))
+                    print('Dividing learning rate by 10')
+                    optimizer.param_groups[0]['lr'] /= 10.
+
+                best_val_loss.append(val_loss)
+
+    except KeyboardInterrupt:
+        print('-' * 89)
+        print('Exiting from training early')
+
+    # Load the best saved model.
+    # model_load(args.save)
+    #
+    # params = list(model.parameters()) + list(criterion.parameters())
+    # total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in params if x.size())
+    # print('Model total parameters:', total_params)
 
 
-        # Run on test data.
-        test_loss, test_acc, test_tag_acc, precision, recall = evaluate()
-        f5 = (1+5**2)*(precision*recall)/((5**2)*precision + recall)
-        print('=' * 89)
-        print('| Test result | test loss {:5.2f} | test acc {:8.2f} | test tag acc {:8.3f} | test precision {:5.2f} | test recall {:5.2f} | test f5 {:5.2f} |'.format(
-            test_loss, test_acc, test_tag_acc, precision, recall, f5))
-        print('=' * 89)
+    # Run on test data.
+    # test_loss = evaluate(test_data, test_batch_size)
+    # print('=' * 89)
+    # print('| End of training | test loss {:5.2f} | test ppl {:8.2f} | test bpc {:8.3f}'.format(
+    #     test_loss, math.exp(test_loss), test_loss / math.log(2)))
+    # print('=' * 89)

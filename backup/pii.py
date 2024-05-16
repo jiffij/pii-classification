@@ -3,7 +3,7 @@ import json
 from itertools import chain
 # from functools import partial
 # import evaluate
-from transformers import AutoTokenizer, DebertaV2Tokenizer # , Trainer, TrainingArguments
+from transformers import AutoTokenizer  # , Trainer, TrainingArguments
 from datasets import Dataset
 import numpy as np
 import os
@@ -28,9 +28,8 @@ random.seed(10)
 
 class PII(object):
     def __init__(self, path, num_valid_samples=0.1, use_cuda=False, cal_class_weight=False, build_vocab=False,
-                 fasttext_file="pii_fast_min2.ft", use_fast=True, language_model=False, Test=False):
+                 fasttext_file="pii_fast_min2.ft", use_fast=True, language_model=False):
         self.mode = PII_MODES[0]
-        if Test: self.mode = PII_MODES[2]
         self.language_model = language_model
         self.use_cuda = use_cuda
         self.tokenizer, self.train, self.id2label = self.tokenize(path)
@@ -126,9 +125,9 @@ class PII(object):
             x = self.train[items]
         elif self.mode == PII_MODES[1]:
             x = self.valid[items]
-            # pass
+            pass
         else:
-            x = self.valid[items]
+            return None
 
         if self.language_model:
             X, y = torch.tensor(
@@ -153,7 +152,7 @@ class PII(object):
         elif self.mode == PII_MODES[1]:
             return len(self.valid)
         else:
-            return len(self.valid)
+            return -1
 
     def get_class_weight(self, df):
         y = []
@@ -174,23 +173,19 @@ class PII(object):
             else:
                 n.append(d)
         print("original datapoints: ", len(data))
-        
-        if self.mode != PII_MODES[2]:
-            mixtral = json.load(open(os.path.join(path, "mixtral-8x7b-v1", "mixtral-8x7b-v1.json")))
-            print("mixtral datapoints: ", len(mixtral))
 
-            moredata = json.load(open(os.path.join(path, "moredata_dataset_fixed.json")))
-            print("moredata datapoints: ", len(moredata))
+        mixtral = json.load(open(os.path.join(path, "mixtral-8x7b-v1", "mixtral-8x7b-v1.json")))
+        print("mixtral datapoints: ", len(mixtral))
 
-            external = json.load(open(os.path.join(path, "pii_dataset_fixed.json")))
-            print("external datapoints: ", len(external))
+        moredata = json.load(open(os.path.join(path, "moredata_dataset_fixed.json")))
+        print("moredata datapoints: ", len(moredata))
 
-            data = mixtral + moredata + external + p + n[:len(n) // 3]  # moredata+
-            print("combined: ", len(data))
-        else:
-            data = p + n[:len(n) // 3]
-            print("combined: ", len(data))
-            
+        external = json.load(open(os.path.join(path, "pii_dataset_fixed.json")))
+        print("external datapoints: ", len(external))
+
+        data = mixtral + moredata + external + p + n[:len(n) // 3]  # moredata+
+        print("combined: ", len(data))
+
         all_labels = sorted(list(set(chain(*[x["labels"] for x in data]))))
         label2id = {l: i for i, l in enumerate(all_labels)}
         id2label = {v: k for k, v in label2id.items()}
@@ -248,7 +243,7 @@ class PII(object):
 
             return {**tokenized, "labels": token_labels, "length": length}
 
-        tokenizer = AutoTokenizer.from_pretrained(TRAINING_MODEL_PATH, local_files_only=False)
+        tokenizer = AutoTokenizer.from_pretrained(TRAINING_MODEL_PATH)
 
         ds = Dataset.from_dict({
             "full_text": [x["full_text"] for x in data],

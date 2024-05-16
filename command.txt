@@ -6,3 +6,21 @@ python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data
 
 trained 21 epoch with no attn mask, with normal weight and single head, bi-directional:
 python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save pii_cuda_nomsk.pt --log-interval 10 --seed 5512 --optimizer adamw --bptt 1024 --warmup 2000 --lr 5e-3 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 2
+
+trained with 11188 samples and with 4 head and with log weights:
+python -u main.py --epochs 32 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save sha_cuda_4head_logweight_10k.pt --log-interval 220 --seed 5512 --optimizer adamw --bptt 1024 --warmup 3000 --lr 1e-2 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4
+
+trained with 11188 samples and with 1 head and with log weights:
+python -u main.py --epochs 20 --dropouth 0.1 --dropouti 0.1 --dropout 0.1 --data data/enwik8/ --save sha_cuda_1head_logweight_10k_fastem.pt --log-interval 220 --seed 5512 --optimizer adamw --bptt 1024 --warmup 3000 --lr 1e-2 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4
+
+trained with all layer attn on 1 head the no log weight class 'O'/10:
+python -u main.py --epochs 20 --dropouth 0.3 --dropouti 0.3 --dropout 0.3 --data data/enwik8/ --save sha_cuda_1head_logweight_O/10_10k_fastem_hisattn.pt --log-interval 300 --seed 5512 --optimizer adamw --bptt 1024 --warmup 3000 --lr 1e-2 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4
+
+pretraining:
+python -u main.py --epochs 15 --dropouth 0.3 --dropouti 0.3 --dropout 0.3 --data data/enwik8/ --save pretrain_lm.pt --log-interval 300 --seed 5512 --optimizer adamw --bptt 1024 --warmup 3000 --lr 1e-2 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4 --language_model
+
+pretraining with MSE:
+python -u main.py --epochs 15 --dropouth 0.3 --dropouti 0.3 --dropout 0.3 --data data/enwik8/ --save pretrain_lm_mse.pt --log-interval 300 --seed 5512 --optimizer adamw --bptt 1024 --warmup 	 --lr 1e-2 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4 --language_model --criterion MSE
+
+training on pretrained cosine similarity:
+python -u main.py --epochs 15 --dropouth 0.3 --dropouti 0.3 --dropout 0.3 --data data/enwik8/ --save cont_pretrained_cos.pt --log-interval 300 --seed 5512 --optimizer adamw --bptt 1024 --warmup 3000 --lr 1e-4 --emsize 1024 --nhid 4096 --nlayers 4 --batch_size 16 --ce_weight --accumulate 4 --resume pretrain_lm.pt

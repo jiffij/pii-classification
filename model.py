@@ -169,13 +169,14 @@ class PyTorchAttention(nn.Module):
         return self.mha(q, k, v, attn_mask=attn_mask)
 
 class Block(nn.Module):
-    def __init__(self, embed_dim, hidden_dim, heads=1, dropout=None, rnn=False, residual=True, use_attn=True):
+    def __init__(self, embed_dim, hidden_dim, heads=1, dropout=None, rnn=False, residual=True, use_attn=True, language_model=False, causal=True):
         super().__init__()
         #self.attn = PyTorchAttention(embed_dim, heads=heads, dropout=dropout)
         self.attn = None
         if use_attn: # TODO changed to pytorch attention
             self.attn = PyTorchAttention(embed_dim, heads=heads, dropout=dropout)
             # self.attn = Attention(embed_dim, heads=heads, r=False, dropout=dropout)
+
         self.ff = Boom(embed_dim, hidden_dim, dropout=dropout, shortcut=True)
         self.lnstart = LayerNorm(embed_dim, eps=1e-12)
         self.lnmid = LayerNorm(embed_dim, eps=1e-12)
@@ -189,7 +190,7 @@ class Block(nn.Module):
 
         self.rnn = None
         if rnn:
-            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=embed_dim, batch_first=False, bidirectional=True) #TODO test with bidirectional
+            self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=embed_dim, batch_first=False, bidirectional=not causal) #TODO test with bidirectional
             if rnn not in [True, False]:
                 self.rnn = rnn
 
@@ -242,17 +243,18 @@ class Block(nn.Module):
         return h, new_mem, new_hidden, focus
 
 class SHARNN(nn.Module):
-    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout=0.5, dropouth=0.5, dropouti=0.5, dropoute=0.1, wdrop=0, tie_weights=False):
+    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout=0.5, dropouth=0.5, dropouti=0.5, dropoute=0.1, wdrop=0, tie_weights=False, language_model=False, causal=True):
         super().__init__()
+        self.language_model = language_model
         embed_dim = ninp
         hidden_dim = nhid
         self.ninp, self.nhid = ninp, nhid
         self.nlayers = nlayers
         num_embeddings = ntoken
         self.num_max_positions = 5000 # 2500 # 5000 # 4096 # 2048 # 4096 + 1024 # 2048 # 5000 # 4096 # 1024 # 4096 # 512 # 1024 # 4096 # 4608 # 7168 # 8192 # 6144 # 4608 # 5000 # 4096 # 3072 # 8192 # 4096
-        self.num_heads = 4 #TODO change to 4  
+        self.num_heads = 1 # TODO change to 4
         num_layers = nlayers
-        self.causal = False # Use global attn instead, not language modeling
+        self.causal = causal #False if not language_model else True  # Use global attn instead, not language modeling
         self.drop = nn.Dropout(dropout)
         self.idrop = nn.Dropout(dropouti)
         self.hdrop = nn.Dropout(dropouth)
@@ -266,15 +268,19 @@ class SHARNN(nn.Module):
             #rnn = rnns[idx % 2]
             #rnn = rnns[idx]
             rnn = True
-            self.blocks.append(Block(embed_dim, hidden_dim, self.num_heads, dropout=dropouth, rnn=rnn, residual=False, use_attn=True if idx == num_layers - 2 else False))
+            self.blocks.append(Block(embed_dim, hidden_dim, self.num_heads, dropout=dropouth, rnn=rnn, residual=False, use_attn=True, language_model=language_model, causal=causal)) # TODO use_attn = True if idx == num_layers - 2 else False
 
         #self.pos_emb = nn.Parameter(torch.zeros(size=(self.num_max_positions, 1, embed_dim), dtype=torch.float))
         self.pos_emb = [0] * self.num_max_positions
         #self.position_gates = torch.nn.ParameterList([nn.Parameter(torch.zeros(size=(1, 1, embed_dim), dtype=torch.float)) for _ in range(num_layers)])
 
-        self.encoder = nn.Embedding(num_embeddings, embed_dim)
+        if num_embeddings == 1024:
+            self.encoder = nn.Linear(num_embeddings, embed_dim)
+        else:
+            self.encoder = nn.Embedding(num_embeddings, embed_dim) ## TODO plz help to replace this with smaller layer
+        
         self.decoder = nn.Linear(embed_dim, num_embeddings)
-        self.linear = nn.Linear(embed_dim, 13) # Added 
+        self.linear = nn.Linear(embed_dim, 13) # Added
         if tie_weights:
             #if nhid != ninp:
             #    raise ValueError('When using the tied flag, nhid must be equal to emsize')
@@ -334,8 +340,10 @@ class SHARNN(nn.Module):
             new_mems.append(m)
 
         h = self.drop(h)
-        
-        l = self.linear(h).squeeze(-1)
+        if not self.language_model:
+            l = self.linear(h).squeeze(-1)
+        else:
+            l = None
 
         if return_h:
             return h, new_hidden, new_mems, l, None, None

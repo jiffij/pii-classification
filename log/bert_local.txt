@@ -1,0 +1,79 @@
+Args: Namespace(data='data/enwik8/', model='BERT', emsize=1024, nhid=4096, nlayers=4, lr=0.001, clip=0.25, epochs=15, batch_size=16, bptt=1024, warmup=3000, cooldown=None, accumulate=4, dropout=0.3, dropouth=0.3, dropouti=0.3, dropoute=0.1, wdrop=0.0, seed=5512, nonmono=5, cuda=True, log_interval=300, save='bert.pt', alpha=2, beta=1, wdecay=1.2e-06, resume='', optimizer='adamw', when=[-1], ce_weight=True, language_model=False, criterion='MSE', tied=True)
+Model total parameters: 37327885
+| epoch   0 |   300/10519 batches | lr 0.00003 | ms/batch 373.83 | loss  2.47 | ppl    11.79 | bpc    3.559 | acc 0.77798 | tag_acc 0.01015
+| epoch   0 |   600/10519 batches | lr 0.00005 | ms/batch 350.73 | loss  2.34 | ppl    10.33 | bpc    3.369 | acc 0.93537 | tag_acc 0.00000
+| epoch   0 |   900/10519 batches | lr 0.00008 | ms/batch 352.49 | loss  2.16 | ppl     8.63 | bpc    3.110 | acc 0.87465 | tag_acc 0.07112
+| epoch   0 |  1200/10519 batches | lr 0.00010 | ms/batch 350.71 | loss  1.70 | ppl     5.48 | bpc    2.453 | acc 0.84828 | tag_acc 0.27454
+| epoch   0 |  1500/10519 batches | lr 0.00013 | ms/batch 350.92 | loss  1.43 | ppl     4.18 | bpc    2.065 | acc 0.86012 | tag_acc 0.38585
+| epoch   0 |  1800/10519 batches | lr 0.00015 | ms/batch 351.34 | loss  1.31 | ppl     3.69 | bpc    1.885 | acc 0.83040 | tag_acc 0.47869
+| epoch   0 |  2100/10519 batches | lr 0.00018 | ms/batch 350.72 | loss  1.19 | ppl     3.30 | bpc    1.723 | acc 0.84536 | tag_acc 0.53036
+| epoch   0 |  2400/10519 batches | lr 0.00020 | ms/batch 350.39 | loss  1.16 | ppl     3.17 | bpc    1.666 | acc 0.83558 | tag_acc 0.56037
+| epoch   0 |  2700/10519 batches | lr 0.00023 | ms/batch 349.69 | loss  0.96 | ppl     2.62 | bpc    1.389 | acc 0.87216 | tag_acc 0.60490
+| epoch   0 |  3000/10519 batches | lr 0.00025 | ms/batch 349.74 | loss  0.89 | ppl     2.44 | bpc    1.288 | acc 0.88086 | tag_acc 0.66210
+| epoch   0 |  3300/10519 batches | lr 0.00028 | ms/batch 350.60 | loss  0.83 | ppl     2.29 | bpc    1.198 | acc 0.86628 | tag_acc 0.68054
+| epoch   0 |  3600/10519 batches | lr 0.00030 | ms/batch 350.74 | loss  0.86 | ppl     2.37 | bpc    1.242 | acc 0.89363 | tag_acc 0.68752
+| epoch   0 |  3900/10519 batches | lr 0.00033 | ms/batch 358.41 | loss  0.81 | ppl     2.24 | bpc    1.162 | acc 0.90171 | tag_acc 0.71631
+| epoch   0 |  4200/10519 batches | lr 0.00035 | ms/batch 362.37 | loss  0.65 | ppl     1.92 | bpc    0.943 | acc 0.91652 | tag_acc 0.75770
+| epoch   0 |  4500/10519 batches | lr 0.00038 | ms/batch 353.69 | loss  0.68 | ppl     1.98 | bpc    0.984 | acc 0.91506 | tag_acc 0.75362
+| epoch   0 |  4800/10519 batches | lr 0.00040 | ms/batch 352.98 | loss  0.65 | ppl     1.91 | bpc    0.936 | acc 0.92673 | tag_acc 0.75045
+| epoch   0 |  5100/10519 batches | lr 0.00043 | ms/batch 252.72 | loss  0.68 | ppl     1.97 | bpc    0.976 | acc 0.93552 | tag_acc 0.75320
+| epoch   0 |  5400/10519 batches | lr 0.00045 | ms/batch 94.36 | loss  0.60 | ppl     1.83 | bpc    0.871 | acc 0.93824 | tag_acc 0.78852
+| epoch   0 |  5700/10519 batches | lr 0.00048 | ms/batch 93.42 | loss  0.68 | ppl     1.97 | bpc    0.978 | acc 0.93551 | tag_acc 0.74336
+| epoch   0 |  6000/10519 batches | lr 0.00050 | ms/batch 94.00 | loss  0.61 | ppl     1.85 | bpc    0.885 | acc 0.94488 | tag_acc 0.77775
+| epoch   0 |  6300/10519 batches | lr 0.00053 | ms/batch 92.26 | loss  0.57 | ppl     1.78 | bpc    0.829 | acc 0.95154 | tag_acc 0.80243
+| epoch   0 |  6600/10519 batches | lr 0.00055 | ms/batch 91.37 | loss  0.54 | ppl     1.72 | bpc    0.782 | acc 0.94108 | tag_acc 0.78134
+| epoch   0 |  6900/10519 batches | lr 0.00058 | ms/batch 90.80 | loss  0.63 | ppl     1.88 | bpc    0.908 | acc 0.93841 | tag_acc 0.77202
+| epoch   0 |  7200/10519 batches | lr 0.00060 | ms/batch 93.47 | loss  0.56 | ppl     1.74 | bpc    0.802 | acc 0.94905 | tag_acc 0.80800
+| epoch   0 |  7500/10519 batches | lr 0.00063 | ms/batch 97.50 | loss  0.54 | ppl     1.71 | bpc    0.773 | acc 0.95347 | tag_acc 0.81829
+| epoch   0 |  7800/10519 batches | lr 0.00065 | ms/batch 95.72 | loss  0.54 | ppl     1.71 | bpc    0.777 | acc 0.94406 | tag_acc 0.80151
+| epoch   0 |  8100/10519 batches | lr 0.00068 | ms/batch 91.27 | loss  0.52 | ppl     1.69 | bpc    0.757 | acc 0.95155 | tag_acc 0.81401
+| epoch   0 |  8400/10519 batches | lr 0.00070 | ms/batch 93.33 | loss  0.47 | ppl     1.61 | bpc    0.685 | acc 0.95297 | tag_acc 0.82082
+| epoch   0 |  8700/10519 batches | lr 0.00073 | ms/batch 105.36 | loss  0.46 | ppl     1.58 | bpc    0.660 | acc 0.95863 | tag_acc 0.83704
+| epoch   0 |  9000/10519 batches | lr 0.00075 | ms/batch 105.04 | loss  0.45 | ppl     1.57 | bpc    0.650 | acc 0.93956 | tag_acc 0.83529
+| epoch   0 |  9300/10519 batches | lr 0.00078 | ms/batch 91.10 | loss  0.51 | ppl     1.66 | bpc    0.733 | acc 0.95788 | tag_acc 0.81298
+| epoch   0 |  9600/10519 batches | lr 0.00080 | ms/batch 275.43 | loss  0.75 | ppl     2.12 | bpc    1.085 | acc 0.93237 | tag_acc 0.78545
+| epoch   0 |  9900/10519 batches | lr 0.00083 | ms/batch 354.41 | loss 15989940.91 | ppl 15989940.91 | bpc 23068608.450 | acc 0.27069 | tag_acc 0.09829
+| epoch   0 | 10200/10519 batches | lr 0.00085 | ms/batch 395.77 | loss 181037.52 | ppl 181037.52 | bpc 261181.932 | acc 0.12951 | tag_acc 0.08639
+| epoch   0 | 10500/10519 batches | lr 0.00088 | ms/batch 352.80 | loss 1136.90 | ppl  1136.90 | bpc 1640.207 | acc 0.20721 | tag_acc 0.08480
+-----------------------------------------------------------------------------------------
+| end of epoch   1 | time: 2746.64s | valid loss 169.56 | valid ppl 43649253434008307504396664175070721283862110293693910439307234406962298880.00 | valid bpc  244.627 | valid acc 0.00383 | valid tag acc 0.10372
+-----------------------------------------------------------------------------------------
+Saving model (new best validation)
+| epoch   1 |   300/10519 batches | lr 0.00090 | ms/batch 352.26 | loss 12666.52 | ppl 12666.52 | bpc 18273.927 | acc 0.13169 | tag_acc 0.07786
+| epoch   1 |   600/10519 batches | lr 0.00093 | ms/batch 352.47 | loss 3865.05 | ppl  3865.05 | bpc 5576.094 | acc 0.17937 | tag_acc 0.06785
+| epoch   1 |   900/10519 batches | lr 0.00095 | ms/batch 350.85 | loss 70818.41 | ppl 70818.41 | bpc 102169.374 | acc 0.25098 | tag_acc 0.07106
+| epoch   1 |  1200/10519 batches | lr 0.00098 | ms/batch 262.92 | loss 187212.67 | ppl 187212.67 | bpc 270090.786 | acc 0.28784 | tag_acc 0.08863
+| epoch   1 |  1500/10519 batches | lr 0.00100 | ms/batch 94.83 | loss 3772.60 | ppl  3772.60 | bpc 5442.705 | acc 0.10219 | tag_acc 0.08321
+| epoch   1 |  1800/10519 batches | lr 0.00100 | ms/batch 107.49 | loss 57826.15 | ppl 57826.15 | bpc 83425.505 | acc 0.15071 | tag_acc 0.07177
+| epoch   1 |  2100/10519 batches | lr 0.00100 | ms/batch 107.25 | loss 1470.03 | ppl  1470.03 | bpc 2120.810 | acc 0.10209 | tag_acc 0.07898
+| epoch   1 |  2400/10519 batches | lr 0.00100 | ms/batch 91.86 | loss 774.53 | ppl   774.53 | bpc 1117.415 | acc 0.12801 | tag_acc 0.09267
+| epoch   1 |  2700/10519 batches | lr 0.00100 | ms/batch 95.75 | loss 119.08 | ppl 5204655359230133057272903641706975115391344647864320.00 | bpc  171.798 | acc 0.24420 | tag_acc 0.07064
+| epoch   1 |  3000/10519 batches | lr 0.00100 | ms/batch 336.40 | loss 417.51 | ppl 20913322290623176741722997761840536070657620379891786416654993980619261504609861965336631757842731147664275240285229034697343672229777615014277425446765433465966475025072022999793664.00 | bpc  602.333 | acc 0.17055 | tag_acc 0.07905
+| epoch   1 |  3300/10519 batches | lr 0.00100 | ms/batch 361.84 | loss 260.93 | ppl 209761536353349600943937978351274022767826127894358680411440554936151160828029916151535981582670554994236173844480.00 | bpc  376.447 | acc 0.24888 | tag_acc 0.06615
+| epoch   1 |  3600/10519 batches | lr 0.00100 | ms/batch 118.09 | loss 736.18 | ppl   736.18 | bpc 1062.083 | acc 0.19208 | tag_acc 0.08537
+| epoch   1 |  3900/10519 batches | lr 0.00099 | ms/batch 143.15 | loss 33.27 | ppl 280449661413043.22 | bpc   47.995 | acc 0.16209 | tag_acc 0.10512
+| epoch   1 |  4200/10519 batches | lr 0.00099 | ms/batch 357.15 | loss 80.28 | ppl 73206607346965144739080869060280320.00 | bpc  115.818 | acc 0.14613 | tag_acc 0.09746
+| epoch   1 |  4500/10519 batches | lr 0.00099 | ms/batch 361.31 | loss 29.03 | ppl 4061148694344.57 | bpc   41.885 | acc 0.20596 | tag_acc 0.10284
+| epoch   1 |  4800/10519 batches | lr 0.00099 | ms/batch 273.94 | loss 18.97 | ppl 173068142.73 | bpc   27.367 | acc 0.13049 | tag_acc 0.07806
+| epoch   1 |  5100/10519 batches | lr 0.00099 | ms/batch 171.49 | loss 33.18 | ppl 255769938639614.88 | bpc   47.862 | acc 0.10837 | tag_acc 0.09297
+| epoch   1 |  5400/10519 batches | lr 0.00098 | ms/batch 272.49 | loss 12.86 | ppl 384501.18 | bpc   18.553 | acc 0.31486 | tag_acc 0.07763
+| epoch   1 |  5700/10519 batches | lr 0.00098 | ms/batch 297.32 | loss 103.87 | ppl 1287447660492283165156339356133407220545093632.00 | bpc  149.851 | acc 0.17598 | tag_acc 0.08491
+| epoch   1 |  6000/10519 batches | lr 0.00098 | ms/batch 362.06 | loss 36.07 | ppl 4609149116510108.00 | bpc   52.033 | acc 0.28769 | tag_acc 0.05099
+| epoch   1 |  6300/10519 batches | lr 0.00098 | ms/batch 361.54 | loss  7.59 | ppl  1977.74 | bpc   10.950 | acc 0.25278 | tag_acc 0.08771
+| epoch   1 |  6600/10519 batches | lr 0.00097 | ms/batch 358.92 | loss 36.17 | ppl 5130608438423551.00 | bpc   52.188 | acc 0.28176 | tag_acc 0.07060
+| epoch   1 |  6900/10519 batches | lr 0.00097 | ms/batch 387.88 | loss 20.38 | ppl 708173635.73 | bpc   29.400 | acc 0.15808 | tag_acc 0.09820
+| epoch   1 |  7200/10519 batches | lr 0.00097 | ms/batch 361.74 | loss  6.95 | ppl  1040.76 | bpc   10.023 | acc 0.36602 | tag_acc 0.04371
+| epoch   1 |  7500/10519 batches | lr 0.00096 | ms/batch 364.03 | loss 11.16 | ppl 70398.20 | bpc   16.103 | acc 0.20303 | tag_acc 0.05777
+| epoch   1 |  7800/10519 batches | lr 0.00096 | ms/batch 363.75 | loss  4.24 | ppl    69.20 | bpc    6.113 | acc 0.50995 | tag_acc 0.05416
+| epoch   1 |  8100/10519 batches | lr 0.00095 | ms/batch 371.97 | loss 15.21 | ppl 4022923.89 | bpc   21.940 | acc 0.32908 | tag_acc 0.05893
+| epoch   1 |  8400/10519 batches | lr 0.00095 | ms/batch 358.88 | loss  5.52 | ppl   250.28 | bpc    7.967 | acc 0.32321 | tag_acc 0.06935
+| epoch   1 |  8700/10519 batches | lr 0.00095 | ms/batch 358.24 | loss  3.88 | ppl    48.38 | bpc    5.596 | acc 0.30407 | tag_acc 0.07951
+| epoch   1 |  9000/10519 batches | lr 0.00094 | ms/batch 355.54 | loss  4.28 | ppl    71.93 | bpc    6.168 | acc 0.35741 | tag_acc 0.06105
+| epoch   1 |  9300/10519 batches | lr 0.00094 | ms/batch 350.01 | loss  3.11 | ppl    22.47 | bpc    4.490 | acc 0.49269 | tag_acc 0.04763
+| epoch   1 |  9600/10519 batches | lr 0.00093 | ms/batch 359.89 | loss  8.33 | ppl  4160.52 | bpc   12.023 | acc 0.30616 | tag_acc 0.04919
+| epoch   1 |  9900/10519 batches | lr 0.00093 | ms/batch 363.79 | loss  3.95 | ppl    52.15 | bpc    5.705 | acc 0.33833 | tag_acc 0.06051
+| epoch   1 | 10200/10519 batches | lr 0.00092 | ms/batch 358.26 | loss  3.41 | ppl    30.33 | bpc    4.923 | acc 0.45784 | tag_acc 0.06055
+| epoch   1 | 10500/10519 batches | lr 0.00092 | ms/batch 356.33 | loss  8.54 | ppl  5103.10 | bpc   12.317 | acc 0.51169 | tag_acc 0.04022
+-----------------------------------------------------------------------------------------
+| end of epoch   2 | time: 3237.15s | valid loss  2.43 | valid ppl    11.39 | valid bpc    3.510 | valid acc 0.00399 | valid tag acc 0.10372
+-----------------------------------------------------------------------------------------
