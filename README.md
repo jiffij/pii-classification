@@ -1,6 +1,6 @@
 # Project Description
 
-This project used SHA-RNN and MobileBERT to predict Personal Identity Information (PII). 
+This project used SHA-RNN and MobileBERT to classify Personal Identity Information (PII). The dataset is collected from Kaggle (The Learning Agency Lab - PII Data Detection)[https://www.kaggle.com/competitions/pii-detection-removal-from-educational-data]. 
 
 |Training Setting                              | SHA-RNN | MobileBERT |
 |-----------------------------------|----------|------------|
@@ -25,6 +25,7 @@ This project used SHA-RNN and MobileBERT to predict Personal Identity Informatio
 | Average runtime (s/epoch) | 3238.6 | 719.73 |
 | Device | RTX 4070 | RTX 4090 |
 
+MobileBERT shows excellent results both in accuracy metrics and computational efficiency. With a nearly perfect recall, meaning that the model has the ability to find all the relevant cases within a dataset, a low complexity due to its low number of parameters, and good computational efficiency with the lowest average time per epoch of all implemented models, MobileBERT showcases as an excellent alternative to tackle the ongoing necessity of protecting users PII.
 
 ## Changed Items 
 - CosineAnnealingWarmRestarts
