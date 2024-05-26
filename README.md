@@ -2,6 +2,16 @@
 
 This project used SHA-RNN and MobileBERT to predict Personal Identity Information (PII). 
 
+| Model                             | SHA-RNN | MobileBERT |
+|-----------------------------------|----------|------------|
+| F5 | 0.7| 0.98 |
+| Precision | 0 | 0.84 |
+| Recall | 1 | 0.99
+| Tag Accuracy | 0.438 | 0.917 |
+| Parameters | 51.485M | 20.350M |
+| FLOPs | 51.704G | 20.743G |
+| Average runtime (s/epoch) | 3238.6 | 719.73 |
+| Device | RTX 4070 | RTX 4090 |
 
 
 # Single Headed Attention RNN
