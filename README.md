@@ -2,7 +2,19 @@
 
 This project used SHA-RNN and MobileBERT to predict Personal Identity Information (PII). 
 
-| Model                             | SHA-RNN | MobileBERT |
+|Training Setting                              | SHA-RNN | MobileBERT |
+|-----------------------------------|----------|------------|
+| learning rate | 1 × 10−2 | 1 × 10−2 |
+| Loss function | Log-weighted Cross-Entropy | Weighted Cross-Entropy |
+| Optimizer | AdamW | AdamW |
+| Dropout | 0.3 | 0.3 |
+| Warmup | 1 epoch linear | 1 epoch linear |
+|lr scheduler | CosineAnnealing with WarmRestarts | CosineAnnealing with WarmRestarts |
+| Attention layers | 4 | 3 |
+| Attention Head | 1 | 4 |
+| Embedding size | 1024 | 128 |
+
+|Result                              | SHA-RNN | MobileBERT |
 |-----------------------------------|----------|------------|
 | F5 | 0.7| 0.98 |
 | Precision | 0 | 0.84 |
@@ -12,6 +24,19 @@ This project used SHA-RNN and MobileBERT to predict Personal Identity Informatio
 | FLOPs | 51.704G | 20.743G |
 | Average runtime (s/epoch) | 3238.6 | 719.73 |
 | Device | RTX 4070 | RTX 4090 |
+
+
+## Changed Items 
+- CosineAnnealingWarmRestarts
+- LinearWarmup
+- Bi-directional LSTM
+- Removed attention mask
+- Changed to Pytorch multi-headed attn
+- Optimizer -> adam, adamw
+- changed SplitCEloss to CEloss (with weight, or log weight) --ce_weight
+- removed amp
+- added pii dataset
+- changed to multi-headed attn.
 
 
 # Single Headed Attention RNN
@@ -78,14 +103,9 @@ Most of the improvement will happen in the first few epochs of this final comman
 The final test bpc should be approximately 1.07 for the full 4 layer SHA-LSTM or 1.08 for the single headed 4 layer SHA-LSTM.
 
 
-## Added 
-- CosineAnnealingWarmRestarts
-- LinearWarmup
-- Bi-directional LSTM
-- Removed attn. mask
-- Changed to Pytorch multi-headed attn
-- Optimizer -> adam, adamw
-- changed SplitCEloss to CEloss (with weight, or log weight) --ce_weight
-- removed amp
-- added pii dataset
-- changed to multi-headed attn.
+## Reference
+MobileBERT: https://arxiv.org/abs/2004.02984
+MobileBERT HuggingFace: https://huggingface.co/docs/transformers/model_doc/mobilebert
+SHA-RNN: https://arxiv.org/abs/1911.11423
+SHA-RNN git repo: https://github.com/Smerity/sha-rnn
+
