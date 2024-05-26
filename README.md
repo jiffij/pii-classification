@@ -1,6 +1,6 @@
 # Project Description
 
-This project used SHA-RNN and MobileBERT to classify Personal Identity Information (PII). The dataset is collected from Kaggle (The Learning Agency Lab - PII Data Detection)[https://www.kaggle.com/competitions/pii-detection-removal-from-educational-data]. 
+This project used SHA-RNN and MobileBERT to classify Personal Identity Information (PII). The dataset is collected from Kaggle [The Learning Agency Lab - PII Data Detection](https://www.kaggle.com/competitions/pii-detection-removal-from-educational-data). 
 
 |Training Setting                              | SHA-RNN | MobileBERT |
 |-----------------------------------|----------|------------|
