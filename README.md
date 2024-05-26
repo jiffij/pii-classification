@@ -1,3 +1,9 @@
+# Project Description
+
+This project used SHA-RNN and MobileBERT to predict Personal Identity Information (PII). 
+
+
+
 # Single Headed Attention RNN
 
 For full details see the paper [Single Headed Attention RNN: Stop Thinking With Your Head](https://arxiv.org/abs/1911.11423).
